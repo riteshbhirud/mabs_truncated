@@ -17,5 +17,7 @@ Matrix product state backend for simulating bosonic systems.
 - Guo, C., Weichselbaum, A., von Delft, J., and Vojta, M., “Critical and Strong-Coupling Phases in One- and Two-Bath Spin-Boson Models”, <i>Physical Review Letters</i>, vol. 108, no. 16, Art. no. 160401, 2012. https://doi.org/10.1103/PhysRevLett.108.160401.
 - Wong, H. and Chen, Z.-D., “Density matrix renormalization group approach to the spin-boson model”, <i>Physical Review B</i>, vol. 77, no. 17, Art. no. 174305, 2008. https://doi.org/10.1103/PhysRevB.77.174305.
 
+### Projected-Purified DMRG
+- Köhler, T., Stolpp, J., and Paeckel, S., “Efficient and flexible approach to simulate low-dimensional quantum lattice models with large local Hilbert spaces”, <i>SciPost Physics</i>, vol. 10, no. 3, Art. no. 058, 2021. https://doi.org/10.21468/SciPostPhys.10.3.058.
 
 

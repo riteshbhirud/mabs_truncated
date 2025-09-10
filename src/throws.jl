@@ -1,0 +1,1 @@
+PSEUDOSITE_ERROR = lazy"the input MPS must have a truncated bosonic Hilbert space dimension equal to `2ᴺ` in order to perform the pseudo-site algorithm"

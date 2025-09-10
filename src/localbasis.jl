@@ -1,0 +1,1 @@
+struct LocalBasis <: MabsAlg end
