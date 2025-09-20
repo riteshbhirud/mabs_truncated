@@ -20,9 +20,8 @@ export creation_op, annihilation_op, number_op
 export displacement_op, squeezing_op, kerr_evolution_op
 export build_harmonic_chain_mpo, build_kerr_chain_mpo
 export build_trotter_gates, build_evolution_gate  
-export build_simple_gates  
 export safe_factorial
-export _validate_opsum_sites, _is_contiguous
+
 
 include("algs.jl")
 include("throws.jl")

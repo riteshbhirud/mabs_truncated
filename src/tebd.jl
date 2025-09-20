@@ -1,6 +1,6 @@
 """
 Time Evolution Block Decimation (TEBD) functions for bosonic MPS.
-Production-ready implementation using ITensors' built-in gate functionality.
+Production-ready implementation using direct mathematical gate construction.
 """
 
 """
@@ -44,9 +44,115 @@ function tebd(psi::BMPS{<:ITensorMPS.MPS,Truncated}, gate::ITensors.ITensor; kwa
 end
 
 """
+    build_evolution_gate(sites::Vector{<:ITensors.Index}, gate_type::String, params::NamedTuple, dt::Real)
+
+Build a single evolution gate exp(-i*dt*H) using direct mathematical construction.
+This is the primary, production-ready interface for gate construction.
+
+# Arguments
+- `sites::Vector{<:ITensors.Index}`: Vector of site indices
+- `gate_type::String`: Type of gate ("number", "hopping", "kerr")
+- `params::NamedTuple`: Parameters for the specific gate type
+- `dt::Real`: Time step
+
+# Gate Types and Parameters
+- `"number"`: Single-site number operator evolution
+  - `params = (site=i, omega=ω)` → H = ω*n_i
+- `"hopping"`: Two-site hopping evolution  
+  - `params = (sites=[i,j], J=J)` → H = J*(a†_i*a_j + a_i*a†_j)
+- `"kerr"`: Single-site Kerr nonlinearity
+  - `params = (site=i, chi=χ)` → H = χ*n_i²
+
+# Examples
+```julia
+sites = bosonic_sites(4, 6)
+dt = 0.01
+
+# Number operator gate: H = ω*n₁
+number_gate = build_evolution_gate(sites, "number", (site=1, omega=1.0), dt)
+
+# Hopping gate: H = J*(a†₁a₂ + a₁a†₂)  
+hopping_gate = build_evolution_gate(sites, "hopping", (sites=[1,2], J=0.5), dt)
+
+# Kerr gate: H = χ*n₁²
+kerr_gate = build_evolution_gate(sites, "kerr", (site=1, chi=0.1), dt)
+```
+"""
+function build_evolution_gate(sites::Vector{<:ITensors.Index}, gate_type::String, params::NamedTuple, dt::Real)
+    # Input validation
+    if isempty(sites)
+        throw(ArgumentError("sites vector cannot be empty"))
+    end
+    
+    if !isfinite(dt)
+        throw(DomainError(dt, "time step dt must be finite"))
+    end
+    
+    if gate_type == "number"
+        site_idx = params.site
+        ω = get(params, :omega, 1.0)
+        _validate_site_index(site_idx, length(sites))
+        return _build_number_gate(sites[site_idx], ω, dt)
+        
+    elseif gate_type == "hopping"
+        site_indices = params.sites
+        J = get(params, :J, 1.0)
+        
+        if length(site_indices) != 2
+            throw(ArgumentError("hopping gate requires exactly 2 sites, got $(length(site_indices))"))
+        end
+        
+        site1_idx, site2_idx = site_indices
+        _validate_site_index(site1_idx, length(sites))
+        _validate_site_index(site2_idx, length(sites))
+        
+        if site1_idx == site2_idx
+            throw(ArgumentError("hopping gate requires different sites, got [$site1_idx, $site2_idx]"))
+        end
+        
+        return _build_hopping_gate(sites[site1_idx], sites[site2_idx], J, dt)
+        
+    elseif gate_type == "kerr"
+        site_idx = params.site
+        χ = get(params, :chi, 1.0)
+        _validate_site_index(site_idx, length(sites))
+        return _build_kerr_gate(sites[site_idx], χ, dt)
+        
+    else
+        throw(ArgumentError("Unknown gate type: '$gate_type'. Supported types: 'number', 'hopping', 'kerr'"))
+    end
+end
+
+"""
     build_trotter_gates(sites::Vector{<:ITensors.Index}, H_terms::Vector, dt::Real; order::Int=2)
 
-Build Trotter decomposition gates for time evolution using ITensors' gate functionality.
+Build Trotter decomposition gates for time evolution.
+
+# Arguments
+- `sites::Vector{<:ITensors.Index}`: Vector of site indices
+- `H_terms::Vector`: Vector of Hamiltonian terms, each as (gate_type, params)
+- `dt::Real`: Time step
+- `order::Int`: Trotter order (1, 2, or 4)
+
+# H_terms Format
+Each element should be a tuple: `(gate_type::String, params::NamedTuple)`
+
+# Examples
+```julia
+sites = bosonic_sites(4, 6)
+dt = 0.01
+
+# Define Hamiltonian: H = Σᵢ ω*nᵢ + Σᵢ J*(a†ᵢaᵢ₊₁ + aᵢa†ᵢ₊₁)
+H_terms = [
+    ("number", (site=1, omega=1.0)),
+    ("number", (site=2, omega=1.0)),
+    ("hopping", (sites=[1,2], J=0.5)),
+    ("kerr", (site=1, chi=0.1))
+]
+
+gates = build_trotter_gates(sites, H_terms, dt; order=2)
+psi_evolved = tebd(psi, gates)
+```
 """
 function build_trotter_gates(
     sites::Vector{<:ITensors.Index}, 
@@ -54,6 +160,7 @@ function build_trotter_gates(
     dt::Real; 
     order::Int=2
 )::Vector{ITensors.ITensor}
+    
     # Input validation
     if isempty(sites)
         throw(ArgumentError("sites vector cannot be empty"))
@@ -72,28 +179,19 @@ function build_trotter_gates(
     end
     
     # Validate all H_terms
-    N_sites = length(sites)
     for (i, term) in enumerate(H_terms)
         if !isa(term, Tuple) || length(term) != 2
-            throw(ArgumentError("H_terms[$i]: each term must be a tuple of (opsum, site_indices)"))
+            throw(ArgumentError("H_terms[$i]: each term must be a tuple of (gate_type, params)"))
         end
         
-        opsum, term_sites = term
+        gate_type, params = term
         
-        if !isa(term_sites, Vector{Int})
-            throw(ArgumentError("H_terms[$i]: site indices must be Vector{Int}, got $(typeof(term_sites))"))
+        if !isa(gate_type, String)
+            throw(ArgumentError("H_terms[$i]: gate_type must be String, got $(typeof(gate_type))"))
         end
         
-        if isempty(term_sites)
-            throw(ArgumentError("H_terms[$i]: site indices cannot be empty"))
-        end
-        
-        if !all(s -> 1 <= s <= N_sites, term_sites)
-            throw(ArgumentError("H_terms[$i]: site indices $(term_sites) out of range [1, $N_sites]"))
-        end
-        
-        if length(unique(term_sites)) != length(term_sites)
-            throw(ArgumentError("H_terms[$i]: duplicate site indices not allowed: $(term_sites)"))
+        if !isa(params, NamedTuple)
+            throw(ArgumentError("H_terms[$i]: params must be NamedTuple, got $(typeof(params))"))
         end
     end
     
@@ -102,8 +200,8 @@ function build_trotter_gates(
     if order == 1
         # First-order Trotter: exp(dt*(H₁ + H₂ + ...)) ≈ exp(dt*H₁)exp(dt*H₂)...
         for term in H_terms
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, dt, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, dt)
             push!(gates, gate)
         end
         
@@ -111,8 +209,8 @@ function build_trotter_gates(
         # Second-order Trotter: exp(dt*H) ≈ ∏ᵢ exp(dt*Hᵢ/2) ∏ᵢ exp(dt*Hᵢ/2) (reverse)
         forward_gates = ITensors.ITensor[]
         for term in H_terms
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, dt/2, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, dt/2)
             push!(forward_gates, gate)
         end
         
@@ -128,159 +226,34 @@ function build_trotter_gates(
         
         # Forward with coeff1*dt/2
         for term in H_terms
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, coeff1*dt/2, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, coeff1*dt/2)
             push!(gates, gate)
         end
         
         # Forward with coeff2*dt/2
         for term in H_terms
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, coeff2*dt/2, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, coeff2*dt/2)
             push!(gates, gate)
         end
         
         # Backward with coeff2*dt/2
         for term in reverse(H_terms)
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, coeff2*dt/2, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, coeff2*dt/2)
             push!(gates, gate)
         end
         
         # Backward with coeff1*dt/2
         for term in reverse(H_terms)
-            opsum, term_sites = term
-            gate = build_evolution_gate(sites, opsum, coeff1*dt/2, term_sites)
+            gate_type, params = term
+            gate = build_evolution_gate(sites, gate_type, params, coeff1*dt/2)
             push!(gates, gate)
         end
     end
     
     return gates
-end
-
-"""
-    build_evolution_gate(sites::Vector{<:ITensors.Index}, opsum::Any, dt::Real, gate_sites::Vector{Int})
-
-Build a single evolution gate exp(-i*dt*H) - Legacy interface with simplified implementation.
-For production use, consider using build_simple_gates() instead.
-"""
-function build_evolution_gate(
-    sites::Vector{<:ITensors.Index}, 
-    opsum::Any, 
-    dt::Real, 
-    gate_sites::Vector{Int}
-)::ITensors.ITensor
-    # Input validation
-    if isempty(sites)
-        throw(ArgumentError("sites vector cannot be empty"))
-    end
-    
-    if isempty(gate_sites)
-        throw(ArgumentError("gate_sites vector cannot be empty"))
-    end
-    
-    if !isfinite(dt)
-        throw(DomainError(dt, "time step dt must be finite"))
-    end
-    
-    N_sites = length(sites)
-    if !all(s -> 1 <= s <= N_sites, gate_sites)
-        throw(ArgumentError("gate_sites $(gate_sites) contains indices out of range [1, $N_sites]"))
-    end
-    
-    if length(unique(gate_sites)) != length(gate_sites)
-        throw(ArgumentError("gate_sites contains duplicate indices: $(gate_sites)"))
-    end
-    
-    # Check contiguity for multi-site gates
-    if length(gate_sites) > 1 && !_is_contiguous(gate_sites)
-        throw(ArgumentError("Multi-site gates currently require contiguous sites. Got: $(gate_sites)"))
-    end
-    
-    try
-        # For production use, we recommend using build_simple_gates() instead
-        # This legacy interface attempts to use ITensors' built-in gate functionality
-        
-        # Build MPO and use ITensors' exp
-        H_mpo = ITensorMPS.MPO(opsum, sites)
-        
-        if length(gate_sites) == 1
-            site_idx = gate_sites[1]
-            H_local = H_mpo[site_idx]
-            return exp(-1im * dt * H_local)
-        elseif length(gate_sites) == 2
-            site1_idx, site2_idx = sort(gate_sites)
-            H_two_site = H_mpo[site1_idx] * H_mpo[site2_idx]
-            return exp(-1im * dt * H_two_site)
-        else
-            @warn "Multi-site gates with >2 sites not implemented, using identity"
-            return _build_identity_gate(sites[gate_sites])
-        end
-        
-    catch e
-        @warn "Legacy OpSum gate construction failed. Consider using build_simple_gates() for better reliability. Error: $e"
-        return _build_identity_gate(sites[gate_sites])
-    end
-end
-
-
-
-"""
-    _build_identity_gate(gate_site_indices::Vector{<:ITensors.Index})
-
-Build identity gate for fallback.
-"""
-function _build_identity_gate(gate_site_indices::Vector{<:ITensors.Index})
-    if length(gate_site_indices) == 1
-        site = gate_site_indices[1]
-        return ITensors.op("Id", site)
-    elseif length(gate_site_indices) == 2
-        site1, site2 = gate_site_indices
-        # Build two-site identity
-        id_gate = ITensors.ITensor(ComplexF64, site1', site2', site1, site2)
-        dim1, dim2 = ITensors.dim(site1), ITensors.dim(site2)
-        
-        for i1 in 1:dim1, i2 in 1:dim2
-            id_gate[site1'=>i1, site2'=>i2, site1=>i1, site2=>i2] = 1.0
-        end
-        
-        return id_gate
-    else
-        # Multi-site identity (simplified)
-        error("Multi-site identity gates not implemented for >2 sites")
-    end
-end
-
-"""
-    _is_contiguous(indices::Vector{Int})
-
-Check if a vector of indices represents contiguous sites.
-"""
-function _is_contiguous(indices::Vector{Int})::Bool
-    if length(indices) <= 1
-        return true
-    end
-    
-    sorted_indices = sort(indices)
-    for i in 2:length(sorted_indices)
-        if sorted_indices[i] != sorted_indices[i-1] + 1
-            return false
-        end
-    end
-    
-    return true
-end
-
-"""
-    _validate_opsum_sites(opsum::Any, expected_sites::Vector{Int})
-
-Basic validation that OpSum exists.
-"""
-function _validate_opsum_sites(opsum::Any, expected_sites::Vector{Int})
-    if opsum === nothing
-        throw(ArgumentError("OpSum cannot be nothing"))
-    end
-    return nothing
 end
 
 """
@@ -304,27 +277,18 @@ function tdvp(psi::BMPS{<:ITensorMPS.MPS,Truncated}, H::BMPO{<:ITensorMPS.MPO,Tr
     return BMPS(evolved_mps, psi.alg)
 end
 
-# Alternative robust implementation using direct gate construction for known operators
-"""
-    build_simple_gates(sites::Vector{<:ITensors.Index}, gate_type::String, params::NamedTuple, dt::Real)
+# ============================================================================
+# INTERNAL HELPER FUNCTIONS
+# ============================================================================
 
-Build specific gates directly without OpSum parsing for better reliability.
 """
-function build_simple_gates(sites::Vector{<:ITensors.Index}, gate_type::String, params::NamedTuple, dt::Real)
-    if gate_type == "number"
-        site_idx = params.site
-        ω = get(params, :omega, 1.0)
-        return _build_number_gate(sites[site_idx], ω, dt)
-    elseif gate_type == "hopping"
-        site1, site2 = params.sites
-        J = get(params, :J, 1.0)
-        return _build_hopping_gate(sites[site1], sites[site2], J, dt)
-    elseif gate_type == "kerr"
-        site_idx = params.site
-        χ = get(params, :chi, 1.0)
-        return _build_kerr_gate(sites[site_idx], χ, dt)
-    else
-        error("Unknown gate type: $gate_type")
+    _validate_site_index(site_idx::Int, total_sites::Int)
+
+Validate that a site index is within valid range.
+"""
+function _validate_site_index(site_idx::Int, total_sites::Int)
+    if !(1 <= site_idx <= total_sites)
+        throw(ArgumentError("Site index $site_idx out of range [1, $total_sites]"))
     end
 end
 
@@ -373,10 +337,8 @@ function _build_hopping_gate(site1::ITensors.Index, site2::ITensors.Index, J::Re
         end
     end
     
-    # Matrix exponentiation
     U_matrix = exp(-1im * dt * H_matrix)
     
-    # Convert back to ITensor
     gate = ITensors.ITensor(ComplexF64, site1', site2', site1, site2)
     
     for n1 in 0:(dim1-1), n2 in 0:(dim2-1)
