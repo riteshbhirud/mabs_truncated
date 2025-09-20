@@ -270,8 +270,7 @@ using LinearAlgebra
                 # Check total particle number is conserved (approximately)
                 total_particles = 0.0
                 for i in 1:N
-                    n_op = number_op(sites[i])
-                    expectation = real(ITensors.expect(psi.mps, n_op, i))
+                    expectation = real(ITensorMPS.expect(psi.mps, "N"; sites=i))  # Simplified: use string operator
                     total_particles += expectation
                 end
                 @test abs(total_particles - 1.0) < 1e-6  # One particle total
@@ -279,7 +278,7 @@ using LinearAlgebra
             
             # After evolution, particle should have spread
             psi_final = psi
-            particle_on_first = real(ITensors.expect(psi_final.mps, number_op(sites[1]), 1))
+            particle_on_first = real(ITensorMPS.expect(psi_final.mps, "N"; sites=1))  # Simplified: use string operator
             @test particle_on_first < 0.9  # Should be less than initial value of 1.0
         end
         
@@ -302,7 +301,7 @@ using LinearAlgebra
             normalize!(psi_coherent)
             
             # Evolve and check that particle number expectation changes
-            n_initial = real(ITensors.expect(psi_coherent.mps, number_op(sites_single[1]), 1))
+            n_initial = real(ITensorMPS.expect(psi_coherent.mps, "N"; sites=1))  # Simplified: use string operator
             
             psi_evolved = copy(psi_coherent)
             for step in 1:20
@@ -313,7 +312,7 @@ using LinearAlgebra
             @test abs(norm(psi_evolved) - 1.0) < 1e-8
             
             # Particle number expectation should remain approximately the same
-            n_final = real(ITensors.expect(psi_evolved.mps, number_op(sites_single[1]), 1))
+            n_final = real(ITensorMPS.expect(psi_evolved.mps, "N"; sites=1))  # Simplified: use string operator
             @test abs(n_final - n_initial) < 1e-6
             
             # But the state should have evolved (phases changed)
