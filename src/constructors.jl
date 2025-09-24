@@ -1,8 +1,4 @@
 """
-Constructor functions for creating bosonic MPS and MPO objects.
-"""
-
-"""
     random_bmps(sites::Vector{<:ITensors.Index}, alg::Truncated; kwargs...)
 
 Create a random bosonic MPS using the Truncated algorithm.
