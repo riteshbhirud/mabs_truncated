@@ -10,76 +10,9 @@ Arguments:
 Returns:
 - BMPS: Random bosonic MPS
 """
-function random_bmps(sites::Vector{<:ITensors.Index}, alg::Truncated; kwargs...)
-    new_kwargs = Dict{Symbol, Any}()
-    
-    for (key, value) in kwargs
-        if key == :linkdim
-            new_kwargs[:linkdims] = value
-        else
-            new_kwargs[key] = value
-        end
-    end
-    
-    mps = ITensorMPS.randomMPS(sites; new_kwargs...)
+function random_bmps(sites::Vector{<:ITensors.Index}, alg::Truncated; linkdims = 1)
+    mps = ITensorMPS.randomMPS(sites; linkdims)
     return BMPS(mps, alg)
-end
-
-"""
-    bosonic_product_mps(sites::Vector{<:ITensors.Index}, states::Vector, alg::Truncated)
-
-Create a product state BMPS from a vector of local state specifications.
-
-Arguments:
-- sites::Vector{<:ITensors.Index}: Vector of site indices
-- states::Vector: Vector of state specifications (integers for Fock states)
-- alg::Truncated: Algorithm specification
-
-Returns:
-- BMPS: Product state bosonic MPS
-"""
-function bosonic_product_mps(sites::Vector{<:ITensors.Index}, states::Vector, alg::Truncated)
-    mps = ITensorMPS.productMPS(sites, states)
-    return BMPS(mps, alg)
-end
-
-"""
-    bosonic_mpo_from_opsum(opsum::ITensors.OpSum, sites::Vector{<:ITensors.Index}, alg::Truncated)
-
-Create a bosonic MPO from an OpSum using the Truncated algorithm.
-
-Arguments:
-- opsum::ITensors.OpSum: Operator sum specification
-- sites::Vector{<:ITensors.Index}: Vector of site indices  
-- alg::Truncated: Algorithm specification
-
-Returns:
-- BMPO: Bosonic MPO constructed from OpSum
-"""
-function bosonic_mpo_from_opsum(opsum::ITensors.OpSum, sites::Vector{<:ITensors.Index}, alg::Truncated)
-    mpo = ITensorMPS.MPO(opsum, sites)
-    return BMPO(mpo, alg)
-end
-
-"""
-    bosonic_sites(N::Int, max_occ::Int; conserve_qns::Bool=false)
-
-Create a vector of bosonic site indices with proper SiteType.
-
-Arguments:
-- N::Int: Number of sites
-- max_occ::Int: Maximum occupation number per site
-- conserve_qns::Bool: Whether to conserve quantum numbers (default: false)
-
-Returns:
-- Vector{ITensors.Index}: Vector of bosonic site indices
-"""
-function bosonic_sites(N::Int, max_occ::Int; conserve_qns::Bool=false)
-    if conserve_qns
-        return ITensors.siteinds("Boson", N; dim=max_occ+1, conserve_qns=true)
-    else
-        return ITensors.siteinds("Boson", N; dim=max_occ+1)
-    end
 end
 
 """
@@ -96,7 +29,7 @@ Returns:
 """
 function vacuum_mps(sites::Vector{<:ITensors.Index}, alg::Truncated)
     states = fill(1, length(sites))
-    return bosonic_product_mps(sites, states, alg)
+    return BMPS(sites, states, alg)  
 end
 
 """

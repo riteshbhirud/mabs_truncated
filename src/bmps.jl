@@ -27,6 +27,11 @@ function BMPS(mps::ITensorMPS.MPS, alg::Truncated)
     return BMPS{typeof(mps), typeof(alg)}(mps, alg)
 end
 
+function BMPS(sites::Vector{<:ITensors.Index}, states::Vector, alg::Truncated)
+    mps = ITensorMPS.productMPS(sites, states)
+    return BMPS{typeof(mps), typeof(alg)}(mps, alg)
+end
+
 ITensorMPS.siteinds(bmps::BMPS) = ITensorMPS.siteinds(bmps.mps)
 ITensorMPS.maxlinkdim(bmps::BMPS) = ITensorMPS.maxlinkdim(bmps.mps)
 ITensorMPS.linkind(bmps::BMPS, i::Int) = ITensorMPS.linkind(bmps.mps, i)

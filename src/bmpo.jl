@@ -27,6 +27,24 @@ function BMPO(mpo::ITensorMPS.MPO, alg::Truncated)
     return BMPO{typeof(mpo), typeof(alg)}(mpo, alg)
 end
 
+"""
+    BMPO(opsum::ITensors.OpSum, sites::Vector{<:ITensors.Index}, alg::Truncated)
+
+Create a BMPO directly from an OpSum and sites using the Truncated algorithm.
+
+Arguments:
+- opsum::ITensors.OpSum: Operator sum specification
+- sites::Vector{<:ITensors.Index}: Vector of site indices  
+- alg::Truncated: Algorithm specification
+
+Returns:
+- BMPO: Bosonic MPO constructed from OpSum
+"""
+function BMPO(opsum::ITensors.OpSum, sites::Vector{<:ITensors.Index}, alg::Truncated)
+    mpo = ITensorMPS.MPO(opsum, sites)
+    return BMPO{typeof(mpo), typeof(alg)}(mpo, alg)
+end
+
 ITensorMPS.siteinds(bmpo::BMPO) = ITensorMPS.siteinds(bmpo.mpo)
 ITensorMPS.maxlinkdim(bmpo::BMPO) = ITensorMPS.maxlinkdim(bmpo.mpo)
 ITensorMPS.linkind(bmpo::BMPO, i::Int) = ITensorMPS.linkind(bmpo.mpo, i)

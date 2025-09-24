@@ -12,7 +12,7 @@ export Truncated, PseudoSite, LocalBasis
 export dmrg, tebd!, tebd, tdvp!, tdvp
 
 #  constructors
-export bosonic_sites, random_bmps, bosonic_product_mps, bosonic_mpo_from_opsum
+export random_bmps
 export vacuum_mps, coherent_state_mps
 
 #  operators
