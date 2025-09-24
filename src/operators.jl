@@ -1,10 +1,5 @@
-"""
-Bosonic operator construction functions for truncated Hilbert spaces.
-"""
 
-"""
-Helper function for safe factorial calculation to avoid performance issues.
-"""
+#Helper function for safe factorial calculation to avoid performance issues.
 function safe_factorial(n::Int)
     if n <= 20
         return factorial(n)
@@ -13,7 +8,6 @@ function safe_factorial(n::Int)
     end
 end
 
-# Define ITensors operator definitions for bosonic systems
 ITensors.op(::ITensors.OpName"N", ::ITensors.SiteType"Boson", s::ITensors.Index) = number_op(s)
 ITensors.op(::ITensors.OpName"Adag", ::ITensors.SiteType"Boson", s::ITensors.Index) = creation_op(s)
 ITensors.op(::ITensors.OpName"A", ::ITensors.SiteType"Boson", s::ITensors.Index) = annihilation_op(s)
@@ -95,13 +89,12 @@ Returns:
 - ITensors.ITensor: Displacement operator tensor
 """
 function displacement_op(site_ind::ITensors.Index, α::Number)
-    # Build generator: G = α*a† - α*a
+    #  G = α*a† - α*a
     a_dag = creation_op(site_ind)
     a = annihilation_op(site_ind)
     
     generator = α * a_dag - conj(α) * a
     
-    # Matrix exponentiation - this is stable for all α values
     op = ITensors.exp(generator)
     return op
 end
@@ -126,11 +119,9 @@ function squeezing_op(site_ind::ITensors.Index, ξ::Number)
     r = abs(ξ)
     φ = angle(ξ)
     
-    # Use known matrix elements for squeezing operator
-    # S(ξ)|n⟩ = Σₘ S_{mn}|m⟩ where matrix elements are computed directly
     for n in 0:max_occ
         for m in 0:max_occ
-            if (n + m) % 2 == 0  # Only even n+m contribute
+            if (n + m) % 2 == 0 
                 k_max = min(n, m) ÷ 2
                 element = 0.0 + 0.0im
                 
@@ -140,7 +131,7 @@ function squeezing_op(site_ind::ITensors.Index, ξ::Number)
                     coeff *= (-0.5 * tanh(r) * exp(2im*φ))^k / sqrt(cosh(r))
                     
                     if n == m && k == 0
-                        coeff /= sqrt(cosh(r))  # Additional factor for diagonal terms
+                        coeff /= sqrt(cosh(r))  #.. additional factor for diagonal terms
                     end
                     
                     element += coeff
@@ -171,7 +162,6 @@ function kerr_evolution_op(site_ind::ITensors.Index, χ::Real, t::Real)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     
-    # Diagonal operator: exp(-i*χ*t*n²)|n⟩ = exp(-i*χ*t*n²)|n⟩
     for n in 0:max_occ
         phase = exp(-1im * χ * t * n^2)
         op[n+1, n+1] = phase
@@ -196,12 +186,10 @@ Returns:
 function build_harmonic_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, J::Real=0.0)
     opsum = ITensors.OpSum()
     
-    # On-site harmonic terms
     for i in 1:length(sites)
         opsum += ω, "N", i
     end
     
-    # Nearest-neighbor hopping terms
     if J != 0.0
         for i in 1:(length(sites)-1)
             opsum += J, "Adag", i, "A", i+1
@@ -230,12 +218,10 @@ Returns:
 function build_kerr_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, χ::Real=0.1)
     opsum = ITensors.OpSum()
     
-    # Linear terms
     for i in 1:length(sites)
         opsum += ω, "N", i
     end
     
-    # Kerr nonlinear terms (n²)
     for i in 1:length(sites)
         opsum += χ, "N", i, "N", i
     end

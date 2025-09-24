@@ -79,7 +79,6 @@ kerr_gate = build_evolution_gate(sites, "kerr", (site=1, chi=0.1), dt)
 ```
 """
 function build_evolution_gate(sites::Vector{<:ITensors.Index}, gate_type::String, params::NamedTuple, dt::Real)
-    # Input validation
     if isempty(sites)
         throw(ArgumentError("sites vector cannot be empty"))
     end
@@ -178,7 +177,6 @@ function build_trotter_gates(
         throw(ArgumentError("Unsupported Trotter order: $order. Supported orders are 1, 2, and 4."))
     end
     
-    # Validate all H_terms
     for (i, term) in enumerate(H_terms)
         if !isa(term, Tuple) || length(term) != 2
             throw(ArgumentError("H_terms[$i]: each term must be a tuple of (gate_type, params)"))
@@ -198,7 +196,6 @@ function build_trotter_gates(
     gates = ITensors.ITensor[]
     
     if order == 1
-        # First-order Trotter: exp(dt*(H₁ + H₂ + ...)) ≈ exp(dt*H₁)exp(dt*H₂)...
         for term in H_terms
             gate_type, params = term
             gate = build_evolution_gate(sites, gate_type, params, dt)
@@ -206,7 +203,6 @@ function build_trotter_gates(
         end
         
     elseif order == 2
-        # Second-order Trotter: exp(dt*H) ≈ ∏ᵢ exp(dt*Hᵢ/2) ∏ᵢ exp(dt*Hᵢ/2) (reverse)
         forward_gates = ITensors.ITensor[]
         for term in H_terms
             gate_type, params = term
@@ -214,38 +210,31 @@ function build_trotter_gates(
             push!(forward_gates, gate)
         end
         
-        # Forward sweep with dt/2
         append!(gates, forward_gates)
-        # Backward sweep with dt/2
         append!(gates, reverse(forward_gates))
         
     elseif order == 4
-        # Fourth-order Trotter decomposition (Forest-Ruth algorithm)
         coeff1 = 1/(2 - 2^(1/3))
         coeff2 = 1 - 2*coeff1
         
-        # Forward with coeff1*dt/2
         for term in H_terms
             gate_type, params = term
             gate = build_evolution_gate(sites, gate_type, params, coeff1*dt/2)
             push!(gates, gate)
         end
         
-        # Forward with coeff2*dt/2
         for term in H_terms
             gate_type, params = term
             gate = build_evolution_gate(sites, gate_type, params, coeff2*dt/2)
             push!(gates, gate)
         end
         
-        # Backward with coeff2*dt/2
         for term in reverse(H_terms)
             gate_type, params = term
             gate = build_evolution_gate(sites, gate_type, params, coeff2*dt/2)
             push!(gates, gate)
         end
         
-        # Backward with coeff1*dt/2
         for term in reverse(H_terms)
             gate_type, params = term
             gate = build_evolution_gate(sites, gate_type, params, coeff1*dt/2)
@@ -277,10 +266,7 @@ function tdvp(psi::BMPS{<:ITensorMPS.MPS,Truncated}, H::BMPO{<:ITensorMPS.MPO,Tr
     return BMPS(evolved_mps, psi.alg)
 end
 
-# ============================================================================
-# INTERNAL HELPER FUNCTIONS
-# ============================================================================
-
+#helper funcs
 """
     _validate_site_index(site_idx::Int, total_sites::Int)
 
@@ -301,7 +287,6 @@ function _build_number_gate(site::ITensors.Index, ω::Real, dt::Real)
     dim = ITensors.dim(site)
     gate = ITensors.ITensor(ComplexF64, site', site)
     
-    # exp(-i*ω*dt*n)|n⟩ = exp(-i*ω*dt*n)|n⟩
     for n in 0:(dim-1)
         phase = exp(-1im * ω * dt * n)
         gate[site'=>(n+1), site=>(n+1)] = phase
@@ -318,19 +303,16 @@ Build evolution gate for H = J*(a†b + ab†) using matrix exponentiation.
 function _build_hopping_gate(site1::ITensors.Index, site2::ITensors.Index, J::Real, dt::Real)
     dim1, dim2 = ITensors.dim(site1), ITensors.dim(site2)
     
-    # Build Hamiltonian matrix in product basis
     H_matrix = zeros(ComplexF64, dim1*dim2, dim1*dim2)
     
     for n1 in 0:(dim1-1), n2 in 0:(dim2-1)
         idx_in = n1*dim2 + n2 + 1
         
-        # a†b term: |n1,n2⟩ → |n1+1,n2-1⟩
         if n2 > 0 && n1 < dim1-1
             idx_out = (n1+1)*dim2 + (n2-1) + 1
             H_matrix[idx_out, idx_in] += J * sqrt((n1+1) * n2)
         end
         
-        # ab† term: |n1,n2⟩ → |n1-1,n2+1⟩
         if n1 > 0 && n2 < dim2-1
             idx_out = (n1-1)*dim2 + (n2+1) + 1
             H_matrix[idx_out, idx_in] += J * sqrt(n1 * (n2+1))
@@ -362,7 +344,6 @@ function _build_kerr_gate(site::ITensors.Index, χ::Real, dt::Real)
     dim = ITensors.dim(site)
     gate = ITensors.ITensor(ComplexF64, site', site)
     
-    # exp(-i*χ*dt*n²)|n⟩ = exp(-i*χ*dt*n²)|n⟩
     for n in 0:(dim-1)
         phase = exp(-1im * χ * dt * n^2)
         gate[site'=>(n+1), site=>(n+1)] = phase
