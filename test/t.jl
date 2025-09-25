@@ -32,7 +32,7 @@ using LinearAlgebra
         max_occ = 4
         sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
         
-        vac = vacuum_mps(sites, Truncated())
+        vac = vacuumstate(sites, Truncated())
         @test length(vac) == N
         @test abs(norm(vac) - 1.0) < 1e-10  
         
@@ -47,7 +47,7 @@ using LinearAlgebra
         site = ITensors.siteinds("Boson", 1; dim=max_occ+1)
         α = 0.5 + 0.3im
         
-        coherent_mps = coherent_state_mps(site, α, Truncated())
+        coherent_mps = coherentstate(site, α, Truncated())
         @test length(coherent_mps) == 1
         @test abs(norm(coherent_mps) - 1.0) < 1e-8  
     end
@@ -66,7 +66,7 @@ using LinearAlgebra
         n = number_op(site)
         @test n isa ITensors.ITensor
         
-        vac = vacuum_mps(sites, Truncated())
+        vac = vacuumstate(sites, Truncated())
         one_photon = BMPS(sites, [2], Truncated()) 
         two_photon = BMPS(sites, [3], Truncated())  
         
@@ -221,7 +221,7 @@ end
         max_occ = 4 
         sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
         
-        psi0 = vacuum_mps(sites, Truncated())
+        psi0 = vacuumstate(sites, Truncated())
         
         dt = 0.001  
         id_gate = ITensors.op("Id", sites[1])
@@ -279,21 +279,21 @@ end
     
     @testset "Multi-mode Coherent States" begin
     single_sites = ITensors.siteinds("Boson", 1; dim=7)
-    psi_single = coherent_state_mps(single_sites, 0.5, Truncated())
+    psi_single = coherentstate(single_sites, 0.5, Truncated())
     @test length(psi_single) == 1
     @test abs(norm(psi_single) - 1.0) < 1e-8
     
     multi_sites = ITensors.siteinds("Boson", 3; dim=7)
-    psi_uniform = coherent_state_mps(multi_sites, 0.3, Truncated())
+    psi_uniform = coherentstate(multi_sites, 0.3, Truncated())
     @test length(psi_uniform) == 3
     @test abs(norm(psi_uniform) - 1.0) < 1e-8
     
     αs = [0.2, 0.4 + 0.1im, 0.1]
-    psi_mixed = coherent_state_mps(multi_sites, αs, Truncated())
+    psi_mixed = coherentstate(multi_sites, αs, Truncated())
     @test length(psi_mixed) == 3
     @test abs(norm(psi_mixed) - 1.0) < 1e-8
     
-    @test_throws ErrorException coherent_state_mps(multi_sites, [0.1, 0.2], Truncated())  
+    @test_throws ErrorException coherentstate(multi_sites, [0.1, 0.2], Truncated())  
 end
     @testset "Operator Matrix Elements" begin
         max_occ = 3
@@ -325,12 +325,12 @@ end
         sites = ITensors.siteinds("Boson", 1; dim=max_occ+1)
         α = 0.5  
         
-        D = displacement_op(sites[1], α)
+        D = displace(sites[1], α)
         @test D isa ITensors.ITensor
         
         @test ITensors.hasinds(D, sites[1]', sites[1])
         
-        vac = vacuum_mps(sites, Truncated())
+        vac = vacuumstate(sites, Truncated())
         displaced_vac = ITensors.apply(D, vac.mps)
         
         overlap = abs(ITensors.inner(vac.mps, displaced_vac))
@@ -498,7 +498,7 @@ end
             gates = build_trotter_gates(sites_single, H_terms, dt; order=1)
             
             α = 1.0
-            psi_coherent = coherent_state_mps(sites_single, α, Truncated())
+            psi_coherent = coherentstate(sites_single, α, Truncated())
             normalize!(psi_coherent)
             
             psi_evolved = copy(psi_coherent)
@@ -580,7 +580,7 @@ end
             gate_forward = build_evolution_gate(sites, "number", (site=1, omega=1.0), dt)
             gate_backward = build_evolution_gate(sites, "number", (site=1, omega=1.0), -dt)
             
-            vac = vacuum_mps(sites, Truncated())
+            vac = vacuumstate(sites, Truncated())
             state1 = tebd(vac, gate_forward)
             state2 = tebd(state1, gate_backward)
             

@@ -84,12 +84,19 @@ Returns:
 Base.deepcopy(bmpo::BMPO) = BMPO(deepcopy(bmpo.mpo), bmpo.alg)
 
 """
-    truncate(bmpo::BMPO{<:ITensorMPS.MPO,Truncated})
+    truncate(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 
 Create a truncated copy of the BMPO.
 
 Arguments:
 - bmpo::BMPO: Input bosonic MPO
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep
+- cutoff::Real: Singular value cutoff threshold  
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate
 
 Returns:
 - BMPO: Truncated bosonic MPO
@@ -100,12 +107,19 @@ function ITensorMPS.truncate(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 end
 
 """
-    truncate!(bmpo::BMPO{<:ITensorMPS.MPO,Truncated})
+    truncate!(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 
 Truncate the BMPO in place.
 
 Arguments:
 - bmpo::BMPO: Bosonic MPO to truncate
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep
+- cutoff::Real: Singular value cutoff threshold  
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate!
 
 Returns:
 - BMPO: The truncated BMPO (same object, modified in place)
@@ -116,46 +130,113 @@ function ITensorMPS.truncate!(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 end
 
 """
-    +(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated})
+    +(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 
-Add two BMPO objects.
+Add two BMPO objects with optional truncation.
 
 Arguments:
 - bmpo1::BMPO: First bosonic MPO
 - bmpo2::BMPO: Second bosonic MPO
 
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after addition
+- cutoff::Real: Singular value cutoff threshold for truncation
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS MPO addition
+
 Returns:
 - BMPO: Sum of the two bosonic MPO
+
+Note: Adding MPOs with bond dimensions D1 and D2 creates bond dimension D1+D2.
+Use truncation kwargs to control the resulting bond dimension.
 """
-function Base.:+(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated})
+function Base.:+(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
     result_mpo = bmpo1.mpo + bmpo2.mpo
+    if !isempty(kwargs)
+        result_mpo = ITensorMPS.truncate(result_mpo; kwargs...)
+    end
     return BMPO(result_mpo, bmpo1.alg)
 end
 
 """
-    contract(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated})
+    add(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
 
-Contract a BMPO with a BMPS.
+Add two BMPO objects using ITensorMPS's add function with truncation control.
+
+This extends ITensorMPS.add for BMPO types, providing a cleaner interface than `+` when you need to specify truncation parameters.
+
+Arguments:
+- bmpo1::BMPO: First bosonic MPO
+- bmpo2::BMPO: Second bosonic MPO
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after addition
+- cutoff::Real: Singular value cutoff threshold for truncation
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS.add
+
+Returns:
+- BMPO: Sum of the two bosonic MPO with controlled bond dimension
+
+Examples:
+```julia
+H_total = add(H1, H2; maxdim=100, cutoff=1e-10)
+
+# Using + operator (no truncation control)  
+H_total = H1 + H2
+```
+
+Note: This function uses ITensorMPS.add internally, which handles bond dimension
+growth (D1 + D2 → controlled dimension) through TTSVD truncation.
+"""
+function add(bmpo1::BMPO{<:ITensorMPS.MPO,Truncated}, bmpo2::BMPO{<:ITensorMPS.MPO,Truncated}; kwargs...)
+    result_mpo = add(bmpo1.mpo, bmpo2.mpo; kwargs...)
+    return BMPO(result_mpo, bmpo1.alg)
+end
+
+"""
+    contract(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+
+Contract a BMPO with a BMPS with optional truncation control.
 
 Arguments:
 - bmpo::BMPO: Bosonic MPO
 - bmps::BMPS: Bosonic MPS
 
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after contraction
+- cutoff::Real: Singular value cutoff threshold for truncation
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- alg::String: Algorithm for contraction (e. g "densitymatrix", "fit")
+- kwargs...: Additional keyword arguments passed to ITensors.contract
+
 Returns:
 - BMPS: Result of MPO-MPS contraction
 """
-function ITensors.contract(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated})
-    result_mps = ITensors.contract(bmpo.mpo, bmps.mps)
+function ITensors.contract(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    result_mps = ITensors.contract(bmpo.mpo, bmps.mps; kwargs...)
     return BMPS(result_mps, bmps.alg)
 end
 
 """
-    apply(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated})
-Apply a BMPO to a BMPS.
+    apply(bmpo::BMPO{<:ITensorMPS.MPO,Truncated}, bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+
+Apply a BMPO to a BMPS with optional truncation control.
 
 Arguments:
 - bmpo::BMPO: Bosonic MPO to apply
 - bmps::BMPS: Bosonic MPS to apply to
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after application
+- cutoff::Real: Singular value cutoff threshold for truncation
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- apply_dag::Bool: Whether to apply the dagger of the MPO
+- kwargs...: Additional keyword arguments passed to ITensors.apply
 
 Returns:
 - BMPS: Result of applying MPO to MPS

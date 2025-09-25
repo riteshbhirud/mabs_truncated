@@ -16,7 +16,7 @@ function random_bmps(sites::Vector{<:ITensors.Index}, alg::Truncated; linkdims =
 end
 
 """
-    vacuum_mps(sites::Vector{<:ITensors.Index}, alg::Truncated)
+    vacuumstate(sites::Vector{<:ITensors.Index}, alg::Truncated)
 
 Create a vacuum state |0,0,...,0⟩ BMPS.
 
@@ -27,14 +27,14 @@ Arguments:
 Returns:
 - BMPS: Vacuum state bosonic MPS
 """
-function vacuum_mps(sites::Vector{<:ITensors.Index}, alg::Truncated)
+function vacuumstate(sites::Vector{<:ITensors.Index}, alg::Truncated)
     states = fill(1, length(sites))
     return BMPS(sites, states, alg)  
 end
 
 """
-    coherent_state_mps(sites::Vector{<:ITensors.Index}, α::Number, alg::Truncated)
-    coherent_state_mps(sites::Vector{<:ITensors.Index}, αs::Vector{<:Number}, alg::Truncated)
+    coherentstate(sites::Vector{<:ITensors.Index}, α::Number, alg::Truncated)
+    coherentstate(sites::Vector{<:ITensors.Index}, αs::Vector{<:Number}, alg::Truncated)
 
 Create an approximate coherent state BMPS using truncated expansion.
 
@@ -47,12 +47,12 @@ Arguments:
 Returns:
 - BMPS: Coherent state bosonic MPS (approximated by truncation)
 """
-function coherent_state_mps(sites::Vector{<:ITensors.Index}, α::Number, alg::Truncated)
+function coherentstate(sites::Vector{<:ITensors.Index}, α::Number, alg::Truncated)
     αs = fill(α, length(sites))
-    return coherent_state_mps(sites, αs, alg)
+    return coherentstate(sites, αs, alg)
 end
 
-function coherent_state_mps(sites::Vector{<:ITensors.Index}, αs::Vector{<:Number}, alg::Truncated)
+function coherentstate(sites::Vector{<:ITensors.Index}, αs::Vector{<:Number}, alg::Truncated)
     N = length(sites)
     length(αs) == N || error("Number of amplitudes ($(length(αs))) must match number of sites ($N)")
     tensors = ITensors.ITensor[]

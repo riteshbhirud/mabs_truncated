@@ -76,7 +76,7 @@ function number_op(site_ind::ITensors.Index)
 end
 
 """
-    displacement_op(site_ind::ITensors.Index, α::Number)
+    displace(site_ind::ITensors.Index, α::Number)
 
 Create the displacement operator D(α) = exp(α*a† - α*a) for a given site.
 Uses matrix exponentiation for numerical stability.
@@ -88,7 +88,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Displacement operator tensor
 """
-function displacement_op(site_ind::ITensors.Index, α::Number)
+function displace(site_ind::ITensors.Index, α::Number)
     #  G = α*a† - α*a
     a_dag = creation_op(site_ind)
     a = annihilation_op(site_ind)
@@ -100,7 +100,7 @@ function displacement_op(site_ind::ITensors.Index, α::Number)
 end
 
 """
-    squeezing_op(site_ind::ITensors.Index, ξ::Number)
+    squeeze(site_ind::ITensors.Index, ξ::Number)
 
 Create the squeezing operator S(ξ) = exp(0.5*(ξ*a†² - ξ*a²)) for a given site.
 Uses direct matrix element construction for numerical stability.
@@ -112,7 +112,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Squeezing operator tensor
 """
-function squeezing_op(site_ind::ITensors.Index, ξ::Number)
+function squeeze(site_ind::ITensors.Index, ξ::Number)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     

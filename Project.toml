@@ -7,8 +7,10 @@ version = "0.1.0"
 ITensorMPS = "0d1a4710-d33b-49a5-8f18-73bdf49b47e2"
 ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+QuantumInterface = "5717a53b-5d69-4fa3-b976-0bf2f97ca1e5"
 
 [compat]
 ITensorMPS = "0.3.19"
 ITensors = "0.7.7, 0.9.9"
 LinearAlgebra = "1.11.0"
+QuantumInterface = "0.3.7, 0.3.8, 0.4.1"

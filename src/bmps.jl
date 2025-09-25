@@ -92,34 +92,64 @@ Returns:
 Base.deepcopy(bmps::BMPS) = BMPS(deepcopy(bmps.mps), bmps.alg)
 
 """
-    normalize!(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
+    normalize!(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; (lognorm!)=[])
 
-Normalize the BMPS in place.
+Normalize the BMPS in place such that norm(bmps) ≈ 1.
+
+This modifies the data of the tensors within the orthogonality center.
+In practice, this evenly spreads lognorm(bmps) over the tensors within 
+the range of the orthogonality center to avoid numerical overflow in 
+the case of diverging norms.
 
 Arguments:
 - bmps::BMPS: Bosonic MPS to normalize
 
+Keyword Arguments:
+- lognorm!=[]: Mutable vector to store the log norm. Pass an empty vector 
+  that will be filled with the log norm value.
+- kwargs...: Additional keyword arguments passed to ITensorMPS.normalize!
+
 Returns:
 - BMPS: The normalized BMPS (same object, modified in place)
+
+Note: If the norm of the input BMPS is 0, normalizing is ill-defined. 
+In this case, the original BMPS is returned and lognorm! will contain -Inf.
+
+Examples:
+```julia
+# Basic normalization
+normalize!(psi)
+
+# Get log norm value
+lognorm_psi = []
+normalize!(psi; (lognorm!)=lognorm_psi)
+if lognorm_psi[1] == -Inf
+    println("Warning: infinite norm detected")
+end
+```
 """
-function LinearAlgebra.normalize!(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
-    LinearAlgebra.normalize!(bmps.mps)
+function LinearAlgebra.normalize!(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    LinearAlgebra.normalize!(bmps.mps; kwargs...)
     return bmps
 end
 
 """
-    normalize(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
+    normalize(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
-Create a normalized copy of the BMPS.
+Create a normalized copy of the BMPS such that norm(bmps) ≈ 1.
 
 Arguments:
 - bmps::BMPS: Input bosonic MPS
 
+Keyword Arguments:
+- lognorm!=[]: Mutable vector to store the log norm value
+- kwargs...: Additional keyword arguments passed to ITensorMPS.normalize
+
 Returns:
 - BMPS: Normalized bosonic MPS
 """
-function LinearAlgebra.normalize(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
-    normalized_mps = LinearAlgebra.normalize(bmps.mps)
+function LinearAlgebra.normalize(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    normalized_mps = LinearAlgebra.normalize(bmps.mps; kwargs...)
     return BMPS(normalized_mps, bmps.alg)
 end
 
@@ -158,12 +188,19 @@ function ITensorMPS.orthogonalize(bmps::BMPS{<:ITensorMPS.MPS,Truncated}, j::Int
 end
 
 """
-    truncate(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
+    truncate(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
 Create a truncated copy of the BMPS.
 
 Arguments:
 - bmps::BMPS: Input bosonic MPS
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep
+- cutoff::Real: Singular value cutoff threshold
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate
 
 Returns:
 - BMPS: Truncated bosonic MPS
@@ -174,12 +211,19 @@ function ITensorMPS.truncate(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 end
 
 """
-    truncate!(bmps::BMPS{<:ITensorMPS.MPS,Truncated})
+    truncate!(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
 Truncate the BMPS in place.
 
 Arguments:
 - bmps::BMPS: Bosonic MPS to truncate
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep
+- cutoff::Real: Singular value cutoff threshold
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate!
 
 Returns:
 - BMPS: The truncated BMPS (same object, modified in place)
@@ -190,19 +234,57 @@ function ITensorMPS.truncate!(bmps::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 end
 
 """
-    +(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
+    +(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
-Add two BMPS objects.
+Add two BMPS objects with optional truncation.
 
 Arguments:
 - bmps1::BMPS: First bosonic MPS
 - bmps2::BMPS: Second bosonic MPS
 
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after addition
+- cutoff::Real: Singular value cutoff threshold for truncation
+- use_absolute_cutoff::Bool: Whether to use absolute cutoff
+- use_relative_cutoff::Bool: Whether to use relative cutoff
+- kwargs...: Additional keyword arguments passed to ITensorMPS MPS addition
+
 Returns:
 - BMPS: Sum of the two bosonic MPS
+
+Note: Adding MPS with bond dimensions D1 and D2 creates bond dimension D1+D2.
+Use truncation kwargs to control the resulting bond dimension.
 """
-function Base.:+(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
+function Base.:+(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
     result_mps = bmps1.mps + bmps2.mps
+    if !isempty(kwargs)
+        result_mps = ITensorMPS.truncate(result_mps; kwargs...)
+    end
+    return BMPS(result_mps, bmps1.alg)
+end
+
+"""
+    add(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+
+Add two BMPS objects using ITensorMPS's add function with truncation control.
+
+This extends ITensorMPS.add for BMPS types, providing a cleaner interface
+than `+` when you need to specify truncation parameters.
+
+Arguments:
+- bmps1::BMPS: First bosonic MPS
+- bmps2::BMPS: Second bosonic MPS
+
+Keyword Arguments:
+- maxdim::Int: Maximum bond dimension to keep after addition
+- cutoff::Real: Singular value cutoff threshold for truncation
+- kwargs...: Additional keyword arguments passed to ITensorMPS.add
+
+Returns:
+- BMPS: Sum of the two bosonic MPS with controlled bond dimension
+"""
+function add(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    result_mps = add(bmps1.mps, bmps2.mps; kwargs...)
     return BMPS(result_mps, bmps1.alg)
 end
 
