@@ -8,7 +8,7 @@ function safe_factorial(n::Int)
     end
 end
 
-ITensors.op(::ITensors.OpName"N", ::ITensors.SiteType"Boson", s::ITensors.Index) = number_op(s)
+ITensors.op(::ITensors.OpName"N", ::ITensors.SiteType"Boson", s::ITensors.Index) = number(s)
 ITensors.op(::ITensors.OpName"Adag", ::ITensors.SiteType"Boson", s::ITensors.Index) = create(s)
 ITensors.op(::ITensors.OpName"A", ::ITensors.SiteType"Boson", s::ITensors.Index) = destroy(s)
 

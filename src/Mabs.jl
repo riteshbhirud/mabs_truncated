@@ -4,7 +4,7 @@ import ITensorMPS
 import ITensors
 import ITensorMPS: add
 import LinearAlgebra
-import QuantumInterface: coherentstate, displace, squeeze, vacuumstate, squeezedstate,create,destroy,number
+import QuantumInterface: coherentstate, displace, squeeze, vacuumstate, create, destroy, number
 
 # core types
 export BMPS, BMPO, MabsAlg

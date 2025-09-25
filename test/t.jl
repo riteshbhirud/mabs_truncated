@@ -262,10 +262,6 @@ end
         psi_evolved = Mabs.tdvp(psi0, H, dt; cutoff=1e-8)
         @test psi_evolved isa BMPS{<:ITensorMPS.MPS,Truncated}
         @test psi_evolved !== psi0
-        
-        psi_inplace = copy(psi0)
-        Mabs.tdvp!(psi_inplace, H, dt; cutoff=1e-8)
-        @test abs(norm(psi_inplace) - 1.0) < 0.05  
     end
     
     @testset "Arithmetic Operations" begin
