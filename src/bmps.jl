@@ -196,11 +196,8 @@ Arguments:
 - bmps::BMPS: Input bosonic MPS
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep
-- cutoff::Real: Singular value cutoff threshold
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate 
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPS: Truncated bosonic MPS
@@ -219,11 +216,8 @@ Arguments:
 - bmps::BMPS: Bosonic MPS to truncate
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep
-- cutoff::Real: Singular value cutoff threshold
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate!
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate!
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPS: The truncated BMPS (same object, modified in place)
@@ -243,11 +237,7 @@ Arguments:
 - bmps2::BMPS: Second bosonic MPS
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after addition
-- cutoff::Real: Singular value cutoff threshold for truncation
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS MPS addition
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate (e.g., maxdim, cutoff)
 
 Returns:
 - BMPS: Sum of the two bosonic MPS
@@ -276,9 +266,8 @@ Arguments:
 - bmps2::BMPS: Second bosonic MPS
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after addition
-- cutoff::Real: Singular value cutoff threshold for truncation
-- kwargs...: Additional keyword arguments passed to ITensorMPS.add
+- kwargs...: Truncation parameters passed to ITensorMPS.add
+  (e.g., maxdim, cutoff)
 
 Returns:
 - BMPS: Sum of the two bosonic MPS with controlled bond dimension
@@ -289,7 +278,7 @@ function add(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.M
 end
 
 """
-    contract(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
+    contract(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
 Contract two BMPS objects.
 
@@ -297,15 +286,18 @@ Arguments:
 - bmps1::BMPS: First bosonic MPS
 - bmps2::BMPS: Second bosonic MPS
 
+Keyword Arguments:
+- kwargs...: Additional keyword arguments passed to ITensors.contract
+
 Returns:
 - Result of contraction (typically a scalar)
 """
-function ITensors.contract(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
-    return ITensors.contract(bmps1.mps, bmps2.mps)
+function ITensors.contract(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    return ITensors.contract(bmps1.mps, bmps2.mps; kwargs...)
 end
 
 """
-    outer(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
+    outer(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
 
 Compute outer product of two BMPS objects.
 
@@ -313,11 +305,14 @@ Arguments:
 - bmps1::BMPS: First bosonic MPS
 - bmps2::BMPS: Second bosonic MPS
 
+Keyword Arguments:
+- kwargs...: Additional parameters passed to ITensorMPS.outer
+
 Returns:
-- Outer product result
+- BMPO: Outer product result as a bosonic MPO
 """
-function ITensorMPS.outer(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
-    outer_result = ITensorMPS.outer(bmps1.mps, bmps2.mps)
+function ITensorMPS.outer(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    outer_result = ITensorMPS.outer(bmps1.mps, bmps2.mps; kwargs...)
     return BMPO(outer_result, bmps1.alg)
 end
 Base.iterate(bmps::BMPS) = Base.iterate(bmps.mps)
@@ -328,10 +323,40 @@ Base.setindex!(bmps::BMPS, val, i) = (bmps.mps[i] = val)
 Base.firstindex(bmps::BMPS) = Base.firstindex(bmps.mps)
 Base.lastindex(bmps::BMPS) = Base.lastindex(bmps.mps)
 
-function LinearAlgebra.dot(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
-    return LinearAlgebra.dot(bmps1.mps, bmps2.mps)
+"""
+    dot(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+
+Compute dot product of two BMPS objects.
+
+Arguments:
+- bmps1::BMPS: First bosonic MPS
+- bmps2::BMPS: Second bosonic MPS
+
+Keyword Arguments:
+- kwargs...: Additional parameters passed to LinearAlgebra.dot
+
+Returns:
+- Scalar: Dot product ⟨bmps1|bmps2⟩
+"""
+function LinearAlgebra.dot(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    return LinearAlgebra.dot(bmps1.mps, bmps2.mps; kwargs...)
 end
 
-function ITensorMPS.inner(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated})
-    return ITensorMPS.inner(bmps1.mps, bmps2.mps)
+"""
+    inner(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+
+Compute inner product of two BMPS objects.
+
+Arguments:
+- bmps1::BMPS: First bosonic MPS
+- bmps2::BMPS: Second bosonic MPS
+
+Keyword Arguments:
+- kwargs...: Additional parameters passed to ITensorMPS.inner
+
+Returns:
+- Scalar: Inner product ⟨bmps1|bmps2⟩
+"""
+function ITensorMPS.inner(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
+    return ITensorMPS.inner(bmps1.mps, bmps2.mps; kwargs...)
 end

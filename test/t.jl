@@ -57,13 +57,13 @@ using LinearAlgebra
         sites = ITensors.siteinds("Boson", 1; dim=max_occ+1)
         site = sites[1]
         
-        a_dag = creation_op(site)
+        a_dag = create(site)
         @test a_dag isa ITensors.ITensor
         
-        a = annihilation_op(site)
+        a = destroy(site)
         @test a isa ITensors.ITensor
         
-        n = number_op(site)
+        n = number(site)
         @test n isa ITensors.ITensor
         
         vac = vacuumstate(sites, Truncated())
@@ -90,11 +90,11 @@ using LinearAlgebra
         max_occ = 6
         sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
         
-        H_harmonic = build_harmonic_chain_mpo(sites; ω=1.0, J=0.1)
+        H_harmonic = harmonic_chain(sites; ω=1.0, J=0.1)
         @test H_harmonic isa BMPO{<:ITensorMPS.MPO,Truncated}
         @test length(H_harmonic) == N
         
-        H_kerr = build_kerr_chain_mpo(sites; ω=1.0, χ=0.05)
+        H_kerr = kerr(sites; ω=1.0, χ=0.05)
         @test H_kerr isa BMPO{<:ITensorMPS.MPO,Truncated}
         @test length(H_kerr) == N
     end
@@ -199,21 +199,34 @@ end
         max_occ = 6
         sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
         
-        H = build_harmonic_chain_mpo(sites; ω=1.0, J=0.0)
+        H = harmonic_chain(sites; ω=1.0, J=0.0)
         psi0 = random_bmps(sites, Truncated())
         
-        result = Mabs.dmrg(H, psi0; nsweeps=8, maxdim=100, cutoff=1e-10, noise=1e-11)
+        energy, psi_gs = Mabs.dmrg(H, psi0; nsweeps=8, maxdim=100, cutoff=1e-10, noise=1e-11)
         
-        if result isa Tuple
-            energy, psi_gs = result
-            @test energy isa Real
-            @test psi_gs isa BMPS{<:ITensorMPS.MPS,Truncated}
+        @test energy isa Real
+        @test psi_gs isa BMPS{<:ITensorMPS.MPS,Truncated}
+        @test abs(energy - N/2) < 1.0
+    end
 
-            @test abs(energy - N/2) < 1.0  
-        else
-            psi_gs = result
-            @test psi_gs isa BMPS{<:ITensorMPS.MPS,Truncated}
-        end
+    @testset "DMRG Excited State Calculation" begin
+        N = 2
+        max_occ = 6
+        sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
+        
+        H = harmonic_chain(sites; ω=1.0, J=0.0)
+        
+        psi0 = random_bmps(sites, Truncated())
+        E0, psi_gs = Mabs.dmrg(H, psi0; nsweeps=8, maxdim=100, cutoff=1e-10)
+        
+        psi1_init = random_bmps(sites, Truncated())
+        E1, psi_excited = Mabs.dmrg(H, [psi_gs], psi1_init; weight=10.0, nsweeps=8, maxdim=100, cutoff=1e-10)
+        
+        @test E1 > E0  
+        @test psi_excited isa BMPS{<:ITensorMPS.MPS,Truncated}
+        
+        overlap = abs(dot(psi_gs, psi_excited))
+        @test overlap < 0.1  
     end
     
     @testset "Time Evolution" begin
@@ -240,7 +253,7 @@ end
         max_occ = 4
         sites = ITensors.siteinds("Boson", N; dim=max_occ+1)
         
-        H = build_harmonic_chain_mpo(sites; ω=1.0)
+        H = harmonic_chain(sites; ω=1.0)
         psi0 = random_bmps(sites, Truncated(); linkdims=4)
         normalize!(psi0)
         
@@ -270,7 +283,7 @@ end
         @test overlap isa Number
         @test isfinite(overlap)
         
-        H = build_harmonic_chain_mpo(sites; ω=1.0)
+        H = harmonic_chain(sites; ω=1.0)
         normalize!(psi1)
         expectation_val = real(ITensors.inner(psi1.mps, ITensors.Apply(H.mpo, psi1.mps)))
         @test expectation_val isa Real
@@ -300,8 +313,8 @@ end
         sites = ITensors.siteinds("Boson", 1; dim=max_occ+1)
         site = sites[1]
         
-        a_dag = creation_op(site)
-        a = annihilation_op(site)
+        a_dag = create(site)
+        a = destroy(site)
         
         state_0 = BMPS(sites, [1], Truncated()) 
         state_1 = BMPS(sites, [2], Truncated())  

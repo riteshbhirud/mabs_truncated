@@ -92,11 +92,8 @@ Arguments:
 - bmpo::BMPO: Input bosonic MPO
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep
-- cutoff::Real: Singular value cutoff threshold  
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPO: Truncated bosonic MPO
@@ -115,11 +112,8 @@ Arguments:
 - bmpo::BMPO: Bosonic MPO to truncate
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep
-- cutoff::Real: Singular value cutoff threshold  
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS.truncate!
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate!
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPO: The truncated BMPO (same object, modified in place)
@@ -139,11 +133,8 @@ Arguments:
 - bmpo2::BMPO: Second bosonic MPO
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after addition
-- cutoff::Real: Singular value cutoff threshold for truncation
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS MPO addition
+- kwargs...: Truncation parameters passed to ITensorMPS.truncate
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPO: Sum of the two bosonic MPO
@@ -171,11 +162,8 @@ Arguments:
 - bmpo2::BMPO: Second bosonic MPO
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after addition
-- cutoff::Real: Singular value cutoff threshold for truncation
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- kwargs...: Additional keyword arguments passed to ITensorMPS.add
+- kwargs...: Truncation parameters passed to ITensorMPS.add
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff)
 
 Returns:
 - BMPO: Sum of the two bosonic MPO with controlled bond dimension
@@ -206,12 +194,8 @@ Arguments:
 - bmps::BMPS: Bosonic MPS
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after contraction
-- cutoff::Real: Singular value cutoff threshold for truncation
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- alg::String: Algorithm for contraction (e. g "densitymatrix", "fit")
-- kwargs...: Additional keyword arguments passed to ITensors.contract
+- kwargs...: Contraction and truncation parameters passed to ITensors.contract
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff, alg)
 
 Returns:
 - BMPS: Result of MPO-MPS contraction
@@ -231,12 +215,8 @@ Arguments:
 - bmps::BMPS: Bosonic MPS to apply to
 
 Keyword Arguments:
-- maxdim::Int: Maximum bond dimension to keep after application
-- cutoff::Real: Singular value cutoff threshold for truncation
-- use_absolute_cutoff::Bool: Whether to use absolute cutoff
-- use_relative_cutoff::Bool: Whether to use relative cutoff
-- apply_dag::Bool: Whether to apply the dagger of the MPO
-- kwargs...: Additional keyword arguments passed to ITensors.apply
+- kwargs...: Parameters passed to ITensors.apply
+  (e.g., maxdim, cutoff, use_absolute_cutoff, use_relative_cutoff, apply_dag)
 
 Returns:
 - BMPS: Result of applying MPO to MPS

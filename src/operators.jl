@@ -9,11 +9,11 @@ function safe_factorial(n::Int)
 end
 
 ITensors.op(::ITensors.OpName"N", ::ITensors.SiteType"Boson", s::ITensors.Index) = number_op(s)
-ITensors.op(::ITensors.OpName"Adag", ::ITensors.SiteType"Boson", s::ITensors.Index) = creation_op(s)
-ITensors.op(::ITensors.OpName"A", ::ITensors.SiteType"Boson", s::ITensors.Index) = annihilation_op(s)
+ITensors.op(::ITensors.OpName"Adag", ::ITensors.SiteType"Boson", s::ITensors.Index) = create(s)
+ITensors.op(::ITensors.OpName"A", ::ITensors.SiteType"Boson", s::ITensors.Index) = destroy(s)
 
 """
-    creation_op(site_ind::ITensors.Index)
+    create(site_ind::ITensors.Index)
 
 Create the bosonic creation operator (raising operator) for a given site.
 
@@ -23,7 +23,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Creation operator tensor
 """
-function creation_op(site_ind::ITensors.Index)
+function create(site_ind::ITensors.Index)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     
@@ -34,7 +34,7 @@ function creation_op(site_ind::ITensors.Index)
 end
 
 """
-    annihilation_op(site_ind::ITensors.Index)
+    destroy(site_ind::ITensors.Index)
 
 Create the bosonic annihilation operator (lowering operator) for a given site.
 
@@ -44,7 +44,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Annihilation operator tensor
 """
-function annihilation_op(site_ind::ITensors.Index)
+function destroy(site_ind::ITensors.Index)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     
@@ -55,7 +55,7 @@ function annihilation_op(site_ind::ITensors.Index)
 end
 
 """
-    number_op(site_ind::ITensors.Index)
+    number(site_ind::ITensors.Index)
 
 Create the bosonic number operator for a given site.
 
@@ -65,7 +65,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Number operator tensor
 """
-function number_op(site_ind::ITensors.Index)
+function number(site_ind::ITensors.Index)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     
@@ -90,8 +90,8 @@ Returns:
 """
 function displace(site_ind::ITensors.Index, α::Number)
     #  G = α*a† - α*a
-    a_dag = creation_op(site_ind)
-    a = annihilation_op(site_ind)
+    a_dag = create(site_ind)
+    a = destroy(site_ind)
     
     generator = α * a_dag - conj(α) * a
     
@@ -146,7 +146,7 @@ function squeeze(site_ind::ITensors.Index, ξ::Number)
 end
 
 """
-    kerr_evolution_op(site_ind::ITensors.Index, χ::Real, t::Real)
+    kerr(site_ind::ITensors.Index, χ::Real, t::Real)
 
 Create the Kerr evolution operator exp(-i*χ*t*n²) for a given site.
 
@@ -158,7 +158,7 @@ Arguments:
 Returns:
 - ITensors.ITensor: Kerr evolution operator tensor
 """
-function kerr_evolution_op(site_ind::ITensors.Index, χ::Real, t::Real)
+function kerr(site_ind::ITensors.Index, χ::Real, t::Real)
     max_occ = ITensors.dim(site_ind) - 1
     op = ITensors.ITensor(ComplexF64, site_ind', site_ind)
     
@@ -170,7 +170,7 @@ function kerr_evolution_op(site_ind::ITensors.Index, χ::Real, t::Real)
 end
 
 """
-    build_harmonic_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, J::Real=0.0)
+    harmonic_chain(sites::Vector{<:ITensors.Index}; ω::Real=1.0, J::Real=0.0)
 
 Build MPO for a chain of harmonic oscillators with optional nearest-neighbor coupling.
 H = Σᵢ ω*nᵢ + J*Σᵢ (aᵢ†aᵢ₊₁ + aᵢaᵢ₊₁†)
@@ -183,7 +183,7 @@ Arguments:
 Returns:
 - BMPO: Matrix product operator for harmonic chain
 """
-function build_harmonic_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, J::Real=0.0)
+function harmonic_chain(sites::Vector{<:ITensors.Index}; ω::Real=1.0, J::Real=0.0)
     opsum = ITensors.OpSum()
     
     for i in 1:length(sites)
@@ -202,7 +202,7 @@ function build_harmonic_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0,
 end
 
 """
-    build_kerr_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, χ::Real=0.1)
+    kerr(sites::Vector{<:ITensors.Index}; ω::Real=1.0, χ::Real=0.1)
 
 Build MPO for a chain of Kerr oscillators.
 H = Σᵢ (ω*nᵢ + χ*nᵢ²)
@@ -215,7 +215,7 @@ Arguments:
 Returns:
 - BMPO: Matrix product operator for Kerr chain
 """
-function build_kerr_chain_mpo(sites::Vector{<:ITensors.Index}; ω::Real=1.0, χ::Real=0.1)
+function kerr(sites::Vector{<:ITensors.Index}; ω::Real=1.0, χ::Real=0.1)
     opsum = ITensors.OpSum()
     
     for i in 1:length(sites)
