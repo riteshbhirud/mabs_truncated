@@ -312,7 +312,7 @@ Returns:
 - BMPO: Outer product result as a bosonic MPO
 """
 function ITensorMPS.outer(bmps1::BMPS{<:ITensorMPS.MPS,Truncated}, bmps2::BMPS{<:ITensorMPS.MPS,Truncated}; kwargs...)
-    outer_result = ITensorMPS.outer(bmps1.mps, bmps2.mps; kwargs...)
+    outer_result = ITensorMPS.outer(ITensors.prime(bmps1.mps), bmps2.mps; kwargs...)
     return BMPO(outer_result, bmps1.alg)
 end
 Base.iterate(bmps::BMPS) = Base.iterate(bmps.mps)
